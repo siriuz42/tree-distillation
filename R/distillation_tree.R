@@ -1,5 +1,22 @@
+# Split rules are given by x_i < c
+
 NUM_EXAMPLES_FOR_SPLIT_DISCOVERY <- 1000
 INF <- 1e100
+
+make_bootstrap_sampler <- function(x) {
+  bootstrap_sampler <- function(n, lower, upper){
+    xt <- t(x)
+    x_lower <- (xt >= lower)
+    x_upper <- (xt < upper)
+    x_selected <- which(apply((x_lower & x_upper), 2, all))
+    if (is.null(x_selected)) {
+      stop('No bootstrap example satisfying the bound condition.')
+    }
+    x_sample_indices <- sample(x_selected, n, replace=TRUE)
+    x[x_sample_indices, ]
+  }
+  bootstrap_sampler
+}
 
 get_gini <- function(x, y, splits=NULL, baseline=FALSE) {
   n_splits <- if (baseline) 1 else nrow(splits)
@@ -32,7 +49,7 @@ get_gini <- function(x, y, splits=NULL, baseline=FALSE) {
   gini
 }
 
-estimate.variance <- function(x, y, splits) {
+estimate_variance <- function(x, y, splits) {
   n_x <- nrow(x)
   n_class <- ncol(y)
   l1 <- x[, splits[1, 1]] < splits[1, 2]  ##left left
