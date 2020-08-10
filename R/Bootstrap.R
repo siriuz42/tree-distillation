@@ -14,7 +14,8 @@ x.generator <- function(n, d=3) {
 }
 
 y.generator <- function(x) {
-  as.numeric(runif(nrow(x)) < sigmoid(-3*(x[, 1]<0) + 3*x[, 2] * (x[, 1] > 0)))
+  as.numeric(runif(nrow(x)) < sigmoid(
+    -3 * (x[, 1] < 0) + 3 * x[, 2] * (x[, 1] > 0)))
 }
 
 x <- x.generator(10000)
