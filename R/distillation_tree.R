@@ -4,15 +4,19 @@ NUM_EXAMPLES_FOR_SPLIT_DISCOVERY <- 1000
 INF <- 1e100
 
 make_bootstrap_sampler <- function(x) {
-  bootstrap_sampler <- function(n, lower, upper){
-    xt <- t(x)
-    x_lower <- (xt >= lower)
-    x_upper <- (xt < upper)
-    x_selected <- which(apply((x_lower & x_upper), 2, all))
-    if (is.null(x_selected)) {
-      stop('No bootstrap example satisfying the bound condition.')
+  bootstrap_sampler <- function(n, lower=NULL, upper=NULL){
+    if (is.null(lower) || is.null(upper)) {
+      x_sample_indices <- sample(nrow(x), n, replace=TRUE)
+    } else {
+      xt <- t(x)
+      x_lower <- (xt >= lower)
+      x_upper <- (xt < upper)
+      x_selected <- which(apply((x_lower & x_upper), 2, all))
+      if (is.null(x_selected)) {
+        stop('No bootstrap example satisfying the bound condition.')
+      }
+      x_sample_indices <- sample(x_selected, n, replace=TRUE)
     }
-    x_sample_indices <- sample(x_selected, n, replace=TRUE)
     x[x_sample_indices, ]
   }
   bootstrap_sampler
@@ -33,7 +37,7 @@ get_gini <- function(x, y, splits=NULL, baseline=FALSE) {
     if (wsum == 0) {
       tmp_left <- rbind(rep(0, n_class))
       tmp_right <- y
-    } else if (ws == n_sample) {
+    } else if (wsum == n_sample) {
       tmp_left <- y
       tmp_right <- rbind(rep(0, n_class))
     } else {
@@ -115,11 +119,11 @@ compare_splits <- function(x, y, splits, max_row=10000) {
     delta <- gini[top] - gini[bot]
     if (n_x > max_row) {
       subsample_row <- sample(1:n_x, max_row) 
-      sigma2hat <- estimate.variance(x[subsample_row, ], 
+      sigma2hat <- estimate_variance(x[subsample_row, ], 
                                      y[subsample_row, ], 
-                                     rbind(splits[top,], splits[bot,]))
+                                     rbind(splits[top, ], splits[bot, ]))
     } else {
-      sigma2hat <- estimate.variance(x, y, rbind(split[top,], split[bot,]))
+      sigma2hat <- estimate_variance(x, y, rbind(splits[top,], splits[bot,]))
     }
     # Numeric instability.
     if(sigma2hat<0) sigma2hat <- 0
@@ -184,7 +188,7 @@ test_splits <- function(splits,
     best <- tmp_splits[best, ]
   } else {
     suc <- TRUE
-    best <- split[result$order_gini[1], ]
+    best <- splits[result$order_gini[1], ]
   }
   list(best=best, 
        success=suc, 
@@ -213,6 +217,7 @@ distillation_tree <- function(teacher,
                               char="", 
                               upper=NULL,
                               lower=NULL) {
+  alpha <- confidence
   tree_depth <- stop_tree_depth
   if (is.null(upper) || is.null(lower)) {
     data <- generator(NUM_EXAMPLES_FOR_SPLIT_DISCOVERY)
@@ -221,6 +226,7 @@ distillation_tree <- function(teacher,
     upper <- rep(INF, n_cov)
   } else {
     data <- generator(NUM_EXAMPLES_FOR_SPLIT_DISCOVERY, lower, upper)
+    n_cov <- ncol(data)
   }
   preds <- teacher(data)
   baseline_gini <- get_gini(data, preds, baseline=TRUE)
@@ -228,10 +234,10 @@ distillation_tree <- function(teacher,
   # Find all potential candidate splits if not given
   if (is.null(splits)) {
     n_data <- nrow(data)
-    splits <- list()
+    splits <- NULL
     for (i in 1:n_cov) {
       sorted_cov <- sort(unique(signif(data[, i], digits=split_digits)))
-      n_midpoints <- length(sorted_coordinates) - 1
+      n_midpoints <- length(sorted_cov) - 1
       if (n_midpoints > split_num_per_var) {
         indices = floor(seq(from=1, 
                         to=n_midpoints, 
@@ -241,7 +247,7 @@ distillation_tree <- function(teacher,
       }
       if (n_midpoints > 0) {
         splits <- rbind(
-          splits, cbind(rep(i, length(indices))
+          splits, cbind(rep(i, length(indices)),
                         (sorted_cov[indices] + sorted_cov[indices + 1]) / 2))
       }
     }
@@ -260,9 +266,9 @@ distillation_tree <- function(teacher,
       teacher,
       function(n) generator(n, lower, upper),
       alpha=alpha, 
-      maxcut=max_cut, 
-      maxinc=max_inc, 
-      mininc=min_inc)
+      max_cut=max_sample_size, 
+      max_inc=max_stepsize, 
+      min_inc=min_stepsize)
     # Zhengze's testing function
     # pvalues <- c()
     # for (TTime in 1:10) {
@@ -272,10 +278,10 @@ distillation_tree <- function(teacher,
     # node$pvalues <- pvalues
     n_sample <- bsplit$n_sample
     bsplit <- bsplit$best
+    node <- list()
     node$split <- c(bsplit, node_number, n_sample)
     node$leaf <- FALSE
     
-    left <- xData[, bsplit[1]] < bsplit[2]
     node$id <- paste(bsplit[1], round(bsplit[2], 2))
     tmp_upper <- upper
     tmp_upper[bsplit[1]] <- bsplit[2]
