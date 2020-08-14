@@ -41,7 +41,7 @@ save(mimic_tree, file="test_single.RData")
 
 mimic_tree_sameforest = list()
 for (i in 1:100) {
-  mimic_tree_sameforest[[i]] <- distillation_tree(teacher=forest,
+  mimic_tree_sameforest[[i]] <- distillation_tree(teacher=teacher,
                                                   generator=sampler,
                                                   max_sample_size=50000,
                                                   max_stepsize=30000,
