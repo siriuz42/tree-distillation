@@ -12,7 +12,7 @@ make_bootstrap_sampler <- function(x) {
       x_lower <- (xt >= lower)
       x_upper <- (xt < upper)
       x_selected <- which(apply((x_lower & x_upper), 2, all))
-      if (is.null(x_selected)) {
+      if (is.null(x_selected) || (length(x_selected) == 0)) {
         stop('No bootstrap example satisfying the bound condition.')
       }
       x_sample_indices <- sample(x_selected, n, replace=TRUE)
@@ -20,6 +20,33 @@ make_bootstrap_sampler <- function(x) {
     x[x_sample_indices, ]
   }
   bootstrap_sampler
+}
+
+make_gaussian_sampler <- function(x, sigma=0.1) {
+  gaussian_sampler <- function(n, lower=NULL, upper=NULL){
+    if (is.null(lower) || is.null(upper)) {
+      x_sample_indices <- sample(nrow(x), n, replace=TRUE)
+      result <- x[x_sample_indices, ] + matrix(rnorm(n * ncol(x), sd=sigma), 
+                                               nrow=n)
+    } else {
+      xt <- t(x)
+      x_lower <- (xt >= lower)
+      x_upper <- (xt < upper)
+      x_selected <- which(apply((x_lower & x_upper), 2, all))
+      if (is.null(x_selected) || (length(x_selected) == 0)) {
+        warning('No bootstrap example satisfying the bound condition.')
+        result <- matrix(runif(n * ncol(x)) * (upper - lower) + lower,
+                         nrow=n, byrow=TRUE)
+      } else {
+        x_sample_indices <- sample(x_selected, n, replace=TRUE)
+        raw <- x[x_sample_indices, ] + matrix(rnorm(n * ncol(x), sd=sigma), 
+                                              nrow=n)
+        result <- t(pmax(pmin(t(raw), upper), lower))
+      }
+    }
+    result
+  }
+  gaussian_sampler
 }
 
 get_gini <- function(x, y, splits=NULL, baseline=FALSE) {
