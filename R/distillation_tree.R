@@ -403,3 +403,60 @@ distillation_tree <- function(teacher,
   }
   node
 }
+
+tree_tag <- function(node, depth) {
+  if (depth == 0) return(NULL)
+  if (is.null(node$split)) {
+    c(tree_tag(node$lnode, depth-1), 
+      0, 0, 
+      tree_tag(node$rnode, depth-1))
+  } else {
+    c(tree_tag(node$lnode, depth-1), 
+      node$split[1:2], 
+      tree_tag(node$rnode, depth-1))
+  }
+}
+
+plot_trees <- function(trees,
+                       depth=3,
+                       epsilon=0.05,
+                       name="structure") {
+  library(ggplot2)
+  sheet <- data.frame()
+  count <- c()
+  board <- c()
+  for (i in 1:100) {
+    treei <- tree_tag(trees[[i]], depth)
+    len <- length(treei)
+    tl <- seq(from=1, to=len, by=1)
+    flag <- FALSE
+    if (length(count)>0)
+      for (j in 1:length(count)) {     
+        if (max(abs(treei[tl] - board[j,tl])) < epsilon) {
+          count[j] <- count[j] + 1
+          flag <- TRUE
+          break
+        }
+      }
+    if(!flag) {
+      count <- c(count, 1)
+      board <- rbind(board, treei)
+    }
+  }
+  print(board)
+  print(count)
+  count <- sort(count, decreasing=TRUE)
+  for (i in 1:length(count)) {
+    sheet <- rbind(sheet, data.frame(
+      name=name, 
+      depth=depth, 
+      class=i, 
+      count=count[i]))
+  }
+  
+  tree_plot <- ggplot(sheet, aes(depth, y=count)) + 
+    theme(legend.position="none") + facet_wrap(~name)
+  print(
+    tree_plot + geom_bar(stat="identity", position="stack", colour="white") +
+      scale_fill_brewer() + xlab("") + ylab("Unique Structure Counts")) 
+}

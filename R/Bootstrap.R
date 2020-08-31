@@ -33,19 +33,21 @@ teacher <- function(data) {
 
 mimic_tree <- distillation_tree(teacher=teacher,
                                 generator=sampler,
-                                max_sample_size=50000,
-                                max_stepsize=30000,
-                                min_stepsize=10000,
-                                stop_tree_depth=4)
+                                max_sample_size=500,
+                                max_stepsize=300,
+                                min_stepsize=100,
+                                stop_tree_depth=3)
 save(mimic_tree, file="test_single.RData")
 
 mimic_tree_sameforest = list()
 for (i in 1:100) {
   mimic_tree_sameforest[[i]] <- distillation_tree(teacher=teacher,
                                                   generator=sampler,
-                                                  max_sample_size=50000,
-                                                  max_stepsize=30000,
-                                                  min_stepsize=10000,
-                                                  stop_tree_depth=4)
+                                                  max_sample_size=500,
+                                                  max_stepsize=300,
+                                                  min_stepsize=100,
+                                                  stop_tree_depth=3)
 }
 save(mimic_tree_sameforest, file="test_multiple.RData")
+load("test_multiple.RData")
+plot_trees(mimic_tree_sameforest)
