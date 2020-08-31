@@ -27,20 +27,22 @@ make_gaussian_sampler <- function(x, sigma=0.1) {
     if (is.null(lower) || is.null(upper)) {
       x_sample_indices <- sample(nrow(x), n, replace=TRUE)
       result <- x[x_sample_indices, ] + matrix(rnorm(n * ncol(x), sd=sigma), 
-                                               nrow=n)
+                                               nrow=n,
+                                               byrow=TRUE)
     } else {
       xt <- t(x)
       x_lower <- (xt >= lower)
       x_upper <- (xt < upper)
       x_selected <- which(apply((x_lower & x_upper), 2, all))
       if (is.null(x_selected) || (length(x_selected) == 0)) {
-        warning('No bootstrap example satisfying the bound condition.')
+        warning('No example satisfying the bound condition.')
         result <- matrix(runif(n * ncol(x)) * (upper - lower) + lower,
                          nrow=n, byrow=TRUE)
       } else {
         x_sample_indices <- sample(x_selected, n, replace=TRUE)
         raw <- x[x_sample_indices, ] + matrix(rnorm(n * ncol(x), sd=sigma), 
-                                              nrow=n)
+                                              nrow=n,
+                                              byrow=TRUE)
         result <- t(pmax(pmin(t(raw), upper), lower))
       }
     }
@@ -75,8 +77,14 @@ make_discrete_sampler <- function(x) {
   }
 }
 
-make_uniform_sampler <- function() {
-  uniform_sampler <- function(n, lower, upper) {
+make_uniform_sampler <- function(init_lower, init_upper) {
+  uniform_sampler <- function(n, lower=NULL, upper=NULL) {
+    if (is.null(lower)) {
+      lower <- init_lower
+    }
+    if (is.null(upper)) {
+      upper <- init_upper
+    }
     ncol <- length(lower)
     matrix(runif(n * ncol) * (upper - lower) + lower, nrow=n, byrow=TRUE)
   }

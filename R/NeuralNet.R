@@ -32,7 +32,7 @@ teacher <- function(data) {
   predict(nn, data)
 }
 
-generator <- NULL
+generator <- make_uniform_sampler(c(-1, -1, -1), c(1, 1, 1))
 mimic_tree <- distillation_tree(
   teacher = teacher,
   generator = generator,
@@ -53,17 +53,14 @@ BreastCancer = BreastCancer[which(complete.cases(BreastCancer) == TRUE), ]
 y <- as.matrix(BreastCancer[, 11])
 y[which(y == "benign")] <- 0
 y[which(y == "malignant")] <- 1
-y <- as.numeric(y)
+y <- as.factor(y)
 x <- as.numeric(as.matrix(BreastCancer[, 2:10]))
 x <- matrix(as.numeric(x), ncol = 9)
 
-df <- data.frame(cbind(x, y))
-nn <- neuralnet(y ~ V1 + V2 + V3 + V4 + V5 + V6 + V7 + V8 + V9, data = df, hidden = 5, linear.output = FALSE)
+df <- data.frame(x, y)
+nn <- neuralnet(y ~ X1 + X2 + X3 + X4 + X5 + X6 + X7 + X8 + X9, data = df, hidden = 5, linear.output = FALSE)
 yy <- nn$net.result[[1]]
-yhat <- matrix(0, length(y), 1)
-yhat[which(yy > mean(yy))] <- 1
-yhat[which(yy <= mean(yy))] <- 0
-
+yhat <- yy[, 1] < yy[, 2]
 print(table(y, yhat))
 plot(nn)
 
@@ -71,9 +68,39 @@ teacher <- function(data) {
   predict(nn, data)
 }
 
-### needs generator
+make_bc_sampler <- function(x, sigma=0.1) {
+  bc_sampler <- function(n, lower=NULL, upper=NULL){
+    if (is.null(lower) || is.null(upper)) {
+      x_sample_indices <- sample(nrow(x), n, replace=TRUE)
+      result <- x[x_sample_indices, ] + matrix(
+        sample(c(1, -1, 0, 0, 0, 0, 0, 0, 0, 0), n * ncol(x), replace=TRUE), 
+        nrow=n,
+        byrow=TRUE)
+    } else {
+      xt <- t(x)
+      x_lower <- (xt >= lower)
+      x_upper <- (xt < upper)
+      x_selected <- which(apply((x_lower & x_upper), 2, all))
+      if (is.null(x_selected) || (length(x_selected) == 0)) {
+        warning('No example satisfying the bound condition.')
+        result <- matrix(runif(n * ncol(x)) * (upper - lower) + lower,
+                         nrow=n, byrow=TRUE)
+      } else {
+        x_sample_indices <- sample(x_selected, n, replace=TRUE)
+        raw <- x[x_sample_indices, ] + matrix(
+          sample(c(1, -1, 0, 0, 0, 0, 0, 0, 0, 0), n * ncol(x), replace=TRUE), 
+          nrow=n,
+          byrow=TRUE)
+        result <- t(pmax(pmin(t(raw), upper), lower))
+      }
+    }
+    result
+  }
+  bc_sampler
+}
 
-generator <- NULL
+### needs generator
+generator <- make_bc_sampler(x)
 mimic_tree <- distillation_tree(
   teacher = teacher,
   generator = generator,
