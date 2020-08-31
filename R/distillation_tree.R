@@ -49,6 +49,40 @@ make_gaussian_sampler <- function(x, sigma=0.1) {
   gaussian_sampler
 }
 
+make_discrete_sampler <- function(x) {
+  discrete_sampler <- function(n, lower=NULL, upper=NULL) {
+    ncol <- length(x)
+    result <- c()
+    for (i in 1:ncol) {
+      if (is.null(lower)) {
+        x_lower <- -INF
+      } else {
+        x_lower <- lower[i]
+      }
+      if (is.null(upper)) {
+        x_upper <- INF
+      } else {
+        x_upper <- upper[i]
+      }
+      x_in <- x[[i]][(x[[i]] >= lower) & (x[[i]] < upper)]
+      if (length(x_in) == 0) {
+        error('No discrete value satisfying the bound condition.')
+      } else {
+        result <- cbind(result, sample(x_in, n, replace=TRUE))
+      }
+    }
+    result
+  }
+}
+
+make_uniform_sampler <- function() {
+  uniform_sampler <- function(n, lower, upper) {
+    ncol <- length(lower)
+    matrix(runif(n * ncol) * (upper - lower) + lower, nrow=n, byrow=TRUE)
+  }
+  uniform_sampler
+}
+
 get_gini <- function(x, y, splits=NULL, baseline=FALSE) {
   n_splits <- if (baseline) 1 else nrow(splits)
   n_sample <- nrow(x)
