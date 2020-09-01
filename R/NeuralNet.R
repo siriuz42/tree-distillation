@@ -110,7 +110,33 @@ mimic_tree <- distillation_tree(
   stop_tree_depth = 4
 )
 
-
-
+mimic_tree_sameforest = list()
+mimic_tree_sameforest_base = list()
+for (i in 1:100) {
+  cat(i)
+  mimic_tree_sameforest[[i]] <- distillation_tree(
+    teacher=teacher,
+    generator=generator,
+    max_sample_size=50000,
+    max_stepsize=30000,
+    min_stepsize=10000,
+    stop_tree_depth=5)
+}
+for (i in 1:100) {
+  cat(i)
+  mimic_tree_sameforest_base[[i]] <- distillation_tree(
+    teacher=teacher,
+    generator=generator,
+    max_sample_size=50000,
+    max_stepsize=30000,
+    min_stepsize=10000,
+    init_sample_size=50000,
+    stop_tree_depth=5,
+    baseline_mode=TRUE)
+}
+save(mimic_tree_sameforest, file="bc_nn_tree.RData")
+plot_trees(mimic_tree_sameforest)
+save(mimic_tree_sameforest_base, file="bc_nn_tree_base.RData")
+plot_trees(mimic_tree_sameforest_base)
 
 
