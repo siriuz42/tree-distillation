@@ -135,8 +135,10 @@ for (i in 1:100) {
     baseline_mode=TRUE)
 }
 save(mimic_tree_sameforest, file="bc_nn_tree.RData")
+load("bc_nn_tree.RData")
 plot_trees(mimic_tree_sameforest)
 save(mimic_tree_sameforest_base, file="bc_nn_tree_base.RData")
+load("bc_nn_tree_base.RData")
 plot_trees(mimic_tree_sameforest_base)
 
 
