@@ -212,13 +212,26 @@ test_splits <- function(splits,
                         alpha=0.05, 
                         max_cut=10000, 
                         max_inc=1000, 
-                        min_inc=10) {
-  n_sample <- 1000
+                        min_inc=10,
+                        init_sample_size=1000,
+                        baseline_mode=FALSE) {
+  n_sample <- init_sample_size
   alpha50 <- alpha / 50
   x <- generator(n_sample)
   y <- teacher(x)
   result <- compare_splits(x, y, splits)
-  while (n_sample < max_cut && result$sum_alpha > alpha) {
+  if (baseline_mode) {
+    best <- splits[result$order_gini[1], ]
+    suc <- TRUE
+    return(list(best=best, 
+                success=suc, 
+                n_sample=n_sample, 
+                order_gini=result$order_gini, 
+                alpha=result$alpha, 
+                sigma=result$sigma, 
+                gini=result$gini))
+  }
+  while ((n_sample < max_cut) && (result$sum_alpha > alpha)) {
     # Ditch some splits 
     tmp_splits <- splits[result$order_gini[1], ]
     for (i in 2:nrow(splits)) {
@@ -270,8 +283,8 @@ test_splits <- function(splits,
 
 distillation_tree <- function(teacher, 
                               generator, 
-                              split_num_per_var=5, 
-                              split_num_cand=20,
+                              split_num_per_var=10, 
+                              split_num_cand=50,
                               split_digits=2,
                               splits=NULL,
                               confidence=0.05, 
@@ -280,6 +293,8 @@ distillation_tree <- function(teacher,
                               max_sample_size=10000, 
                               max_stepsize=1000,
                               min_stepsize=10, 
+                              init_sample_size=1000,
+                              baseline_mode=FALSE,
                               # Below are internal to this function. 
                               # Don't specify when calling.
                               node_number=1, 
@@ -337,7 +352,9 @@ distillation_tree <- function(teacher,
       alpha=alpha, 
       max_cut=max_sample_size, 
       max_inc=max_stepsize, 
-      min_inc=min_stepsize)
+      min_inc=min_stepsize,
+      init_sample_size=init_sample_size,
+      baseline_mode=baseline_mode)
     # Zhengze's testing function
     # pvalues <- c()
     # for (TTime in 1:10) {
@@ -425,7 +442,7 @@ plot_trees <- function(trees,
   sheet <- data.frame()
   count <- c()
   board <- c()
-  for (i in 1:100) {
+  for (i in 1:length(trees)) {
     treei <- tree_tag(trees[[i]], depth)
     len <- length(treei)
     tl <- seq(from=1, to=len, by=1)
@@ -455,8 +472,9 @@ plot_trees <- function(trees,
   }
   
   tree_plot <- ggplot(sheet, aes(depth, y=count)) + 
-    theme(legend.position="none") + facet_wrap(~name)
+    theme(legend.position="none", axis.text.x = element_blank()) + 
+    facet_wrap(~name)
   print(
     tree_plot + geom_bar(stat="identity", position="stack", colour="white") +
-      scale_fill_brewer() + xlab("") + ylab("Unique Structure Counts")) 
+      scale_fill_brewer() + xlab("") + ylab("Unique Structure Counts"))
 }

@@ -40,13 +40,16 @@ mimic_tree <- distillation_tree(teacher=teacher,
 save(mimic_tree, file="test_single.RData")
 
 mimic_tree_sameforest = list()
-for (i in 1:100) {
+for (i in 1:40) {
+  cat(i)
   mimic_tree_sameforest[[i]] <- distillation_tree(teacher=teacher,
                                                   generator=sampler,
                                                   max_sample_size=500,
                                                   max_stepsize=300,
                                                   min_stepsize=100,
-                                                  stop_tree_depth=3)
+                                                  init_sample_size=100,
+                                                  stop_tree_depth=3,
+                                                  baseline_mode=FALSE)
 }
 save(mimic_tree_sameforest, file="test_multiple.RData")
 load("test_multiple.RData")
