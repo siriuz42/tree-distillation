@@ -49,7 +49,7 @@ for (i in 1:40) {
                                                   min_stepsize=100,
                                                   init_sample_size=100,
                                                   stop_tree_depth=3,
-                                                  baseline_mode=FALSE)
+                                                  baseline_mode=TRUE)
 }
 save(mimic_tree_sameforest, file="test_multiple.RData")
 load("test_multiple.RData")
