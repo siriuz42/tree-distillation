@@ -120,25 +120,51 @@ for (i in 1:100) {
     max_sample_size=50000,
     max_stepsize=30000,
     min_stepsize=10000,
-    stop_tree_depth=5)
+    init_sample_size=10000,
+    stop_tree_depth=4)
 }
 for (i in 1:100) {
   cat(i)
+  baseline_x <- generator(50000)
   mimic_tree_sameforest_base[[i]] <- distillation_tree(
     teacher=teacher,
     generator=generator,
     max_sample_size=50000,
     max_stepsize=30000,
     min_stepsize=10000,
-    init_sample_size=50000,
-    stop_tree_depth=5,
-    baseline_mode=TRUE)
+    init_sample_size=10000,
+    stop_tree_depth=4,
+    baseline_x=baseline_x)
 }
-save(mimic_tree_sameforest, file="bc_nn_tree.RData")
+
+save(mimic_tree_sameforest, file="bc_nn_tree_big.RData")
+load("bc_nn_tree_big.RData")
+plot_trees(mimic_tree_sameforest, name="AppTree")
+save(mimic_tree_sameforest_base, file="bc_nn_tree_base_big.RData")
+load("bc_nn_tree_base_big.RData")
+plot_trees(mimic_tree_sameforest_base, name="BASE")
+
+par(mfrow=c(1,4))
+
+require(gridExtra)
+
 load("bc_nn_tree.RData")
-plot_trees(mimic_tree_sameforest)
-save(mimic_tree_sameforest_base, file="bc_nn_tree_base.RData")
+p1 <- summarize_trees(mimic_tree_sameforest, 
+                      name="Breast Cancer Nps=5,000",
+                      x_tick="AppTree")
 load("bc_nn_tree_base.RData")
-plot_trees(mimic_tree_sameforest_base)
-
-
+p2 <- summarize_trees(mimic_tree_sameforest_base, 
+                      name="Breast Cancer Nps=5,000",
+                      x_tick="BASE")
+load("bc_nn_tree_big.RData")
+p3 <- summarize_trees(mimic_tree_sameforest, 
+                      name="Breast Cancer Nps=50,000",
+                      x_tick="AppTree")
+load("bc_nn_tree_base_big.RData")
+p4 <- summarize_trees(mimic_tree_sameforest_base, 
+                      name="Breast Cancer Nps=50,000",
+                      x_tick="BASE")
+sheet <- rbind(p2, p1, p4, p3)
+png("bc_nn.png")
+plot_trees(sheet)
+dev.off()

@@ -214,13 +214,15 @@ test_splits <- function(splits,
                         max_inc=1000, 
                         min_inc=10,
                         init_sample_size=1000,
-                        baseline_mode=FALSE) {
+                        baseline_x=NULL) {
   n_sample <- init_sample_size
   alpha50 <- alpha / 50
-  x <- generator(n_sample)
+  if (!is.null(baseline_x)) {
+    x <- baseline_x
+  }
   y <- teacher(x)
   result <- compare_splits(x, y, splits)
-  if (baseline_mode) {
+  if (!is.null(baseline_x)) {
     best <- splits[result$order_gini[1], ]
     suc <- TRUE
     return(list(best=best, 
@@ -284,7 +286,7 @@ test_splits <- function(splits,
 distillation_tree <- function(teacher, 
                               generator, 
                               split_num_per_var=10, 
-                              split_num_cand=50,
+                              split_num_cand=40,
                               split_digits=2,
                               splits=NULL,
                               confidence=0.05, 
@@ -294,7 +296,7 @@ distillation_tree <- function(teacher,
                               max_stepsize=1000,
                               min_stepsize=10, 
                               init_sample_size=1000,
-                              baseline_mode=FALSE,
+                              baseline_x=NULL,
                               # Below are internal to this function. 
                               # Don't specify when calling.
                               node_number=1, 
@@ -303,7 +305,21 @@ distillation_tree <- function(teacher,
                               lower=NULL) {
   alpha <- confidence
   tree_depth <- stop_tree_depth
-  if (is.null(upper) || is.null(lower)) {
+  if (!is.null(baseline_x)) {
+    n_cov <- ncol(baseline_x)
+    if (is.null(lower)) {
+      lower <- rep(-INF, n_cov)
+    }
+    if (is.null(upper)) {
+      upper <- rep(INF, n_cov)
+    }
+    xt <- t(baseline_x)
+    x_lower <- (xt >= lower)
+    x_upper <- (xt < upper)
+    x_selected <- which(apply((x_lower & x_upper), 2, all))
+    data <- baseline_x[x_selected, ]
+    baseline_x <- data
+  } else if (is.null(upper) || is.null(lower)) {
     data <- generator(NUM_EXAMPLES_FOR_SPLIT_DISCOVERY)
     n_cov <- ncol(data)
     lower <- rep(-INF, n_cov)
@@ -354,7 +370,7 @@ distillation_tree <- function(teacher,
       max_inc=max_stepsize, 
       min_inc=min_stepsize,
       init_sample_size=init_sample_size,
-      baseline_mode=baseline_mode)
+      baseline_x=baseline_x)
     # Zhengze's testing function
     # pvalues <- c()
     # for (TTime in 1:10) {
@@ -386,6 +402,7 @@ distillation_tree <- function(teacher,
       max_sample_size=max_sample_size, 
       max_stepsize=max_stepsize,
       min_stepsize=min_stepsize, 
+      baseline_x=baseline_x,
       node_number=node_number * 2, 
       char=paste(char, 'L', sep=""), 
       upper=tmp_upper,
@@ -405,6 +422,7 @@ distillation_tree <- function(teacher,
       max_sample_size=max_sample_size, 
       max_stepsize=max_stepsize,
       min_stepsize=min_stepsize, 
+      baseline_x=baseline_x,
       node_number=node_number * 2, 
       char=paste(char, 'L', sep=""), 
       upper=upper,
@@ -422,22 +440,26 @@ distillation_tree <- function(teacher,
 }
 
 tree_tag <- function(node, depth) {
-  if (depth == 0) return(NULL)
+  if (depth == 1) {
+    return(NULL)
+  }
   if (is.null(node$split)) {
-    c(tree_tag(node$lnode, depth-1), 
+    c(tree_tag(node$lnode, depth - 1), 
       0, 0, 
-      tree_tag(node$rnode, depth-1))
+      tree_tag(node$rnode, depth - 1))
   } else {
-    c(tree_tag(node$lnode, depth-1), 
+    c(tree_tag(node$lnode, depth - 1), 
       node$split[1:2], 
-      tree_tag(node$rnode, depth-1))
+      tree_tag(node$rnode, depth - 1))
   }
 }
 
-plot_trees <- function(trees,
-                       depth=3,
-                       epsilon=0.05,
-                       name="structure") {
+
+summarize_trees <- function(trees,
+                            depth=4,
+                            x_tick="Count",
+                            epsilon=0.05,
+                            name="Structure") {
   library(ggplot2)
   sheet <- data.frame()
   count <- c()
@@ -447,7 +469,7 @@ plot_trees <- function(trees,
     len <- length(treei)
     tl <- seq(from=1, to=len, by=1)
     flag <- FALSE
-    if (length(count)>0)
+    if (length(count) > 0)
       for (j in 1:length(count)) {     
         if (max(abs(treei[tl] - board[j,tl])) < epsilon) {
           count[j] <- count[j] + 1
@@ -460,21 +482,28 @@ plot_trees <- function(trees,
       board <- rbind(board, treei)
     }
   }
+  cat("Tree Structures:\n")
   print(board)
-  print(count)
+  cat("Num of Exclusive Structures:\n")
   count <- sort(count, decreasing=TRUE)
+  cat(count)
   for (i in 1:length(count)) {
     sheet <- rbind(sheet, data.frame(
       name=name, 
-      depth=depth, 
+      x_tick=x_tick, 
       class=i, 
       count=count[i]))
   }
-  
-  tree_plot <- ggplot(sheet, aes(depth, y=count)) + 
-    theme(legend.position="none", axis.text.x = element_blank()) + 
-    facet_wrap(~name)
+  sheet
+}
+
+plot_trees <- function(sheet) {
+  tree_plot <- ggplot(sheet, aes(x_tick, y=count)) + 
+    theme(legend.position="none") + facet_wrap(~name)
   print(
-    tree_plot + geom_bar(stat="identity", position="stack", colour="white") +
-      scale_fill_brewer() + xlab("") + ylab("Unique Structure Counts"))
+    tree_plot + 
+      geom_bar(stat="identity", position="stack", colour="white") +
+      scale_fill_brewer() + 
+      xlab("") + ylab("Unique Structure Counts")) + 
+      scale_x_discrete()
 }
