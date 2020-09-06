@@ -125,7 +125,7 @@ for (i in 1:100) {
 }
 for (i in 1:100) {
   cat(i)
-  baseline_x <- generator(50000)
+  baseline_x <- generator(10000)
   mimic_tree_sameforest_base[[i]] <- distillation_tree(
     teacher=teacher,
     generator=generator,

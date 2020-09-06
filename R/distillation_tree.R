@@ -1,6 +1,5 @@
 # Split rules are given by x_i < c
 
-NUM_EXAMPLES_FOR_SPLIT_DISCOVERY <- 1000
 INF <- 1e100
 
 make_bootstrap_sampler <- function(x) {
@@ -14,8 +13,8 @@ make_bootstrap_sampler <- function(x) {
       x_selected <- which(apply((x_lower & x_upper), 2, all))
       if (is.null(x_selected) || (length(x_selected) == 0)) {
         stop('No bootstrap example satisfying the bound condition.')
-      }
-      x_sample_indices <- sample(x_selected, n, replace=TRUE)
+      } 
+      x_sample_indices <- sample(c(x_selected, x_selected), n, replace=TRUE)
     }
     x[x_sample_indices, ]
   }
@@ -39,7 +38,7 @@ make_gaussian_sampler <- function(x, sigma=0.1) {
         result <- matrix(runif(n * ncol(x)) * (upper - lower) + lower,
                          nrow=n, byrow=TRUE)
       } else {
-        x_sample_indices <- sample(x_selected, n, replace=TRUE)
+        x_sample_indices <- sample(c(x_selected, x_selected), n, replace=TRUE)
         raw <- x[x_sample_indices, ] + matrix(rnorm(n * ncol(x), sd=sigma), 
                                               nrow=n,
                                               byrow=TRUE)
@@ -287,8 +286,7 @@ distillation_tree <- function(teacher,
                               generator, 
                               split_num_per_var=10, 
                               split_num_cand=40,
-                              split_digits=2,
-                              splits=NULL,
+                              split_digits=5,
                               confidence=0.05, 
                               stop_gini=1e-3,
                               stop_tree_depth=4,
@@ -302,6 +300,7 @@ distillation_tree <- function(teacher,
                               node_number=1, 
                               char="", 
                               upper=NULL,
+                              splits=NULL,
                               lower=NULL) {
   alpha <- confidence
   tree_depth <- stop_tree_depth
@@ -320,12 +319,12 @@ distillation_tree <- function(teacher,
     data <- baseline_x[x_selected, ]
     baseline_x <- data
   } else if (is.null(upper) || is.null(lower)) {
-    data <- generator(NUM_EXAMPLES_FOR_SPLIT_DISCOVERY)
+    data <- generator(init_sample_size)
     n_cov <- ncol(data)
     lower <- rep(-INF, n_cov)
     upper <- rep(INF, n_cov)
   } else {
-    data <- generator(NUM_EXAMPLES_FOR_SPLIT_DISCOVERY, lower, upper)
+    data <- generator(init_sample_size, lower, upper)
     n_cov <- ncol(data)
   }
   preds <- teacher(data)
@@ -423,7 +422,7 @@ distillation_tree <- function(teacher,
       max_stepsize=max_stepsize,
       min_stepsize=min_stepsize, 
       baseline_x=baseline_x,
-      node_number=node_number * 2, 
+      node_number=node_number * 2 + 1, 
       char=paste(char, 'L', sep=""), 
       upper=upper,
       lower=tmp_lower)
