@@ -20,8 +20,6 @@ y.generator <- function(x) {
 
 x <- x.generator(1000)
 x_test <- x.generator(1000)
-sampler_1 <- make_bootstrap_sampler(x)
-sampler_2 <- make_gaussian_sampler(x, sigma=0.1)
 y <- as.factor(y.generator(x))
 
 forest <- randomForest(x, y, sampsize=100, 
@@ -40,6 +38,9 @@ mimic_trees_1_auc <- c()
 mimic_trees_2_auc <- c()
 
 for (i in 1:100) {
+  x_boot <- x[sample(nrow(x), nrow(x), replace=TRUE), ]
+  sampler_1 <- make_bootstrap_sampler(x_boot)
+  sampler_2 <- make_gaussian_sampler(x_boot, sigma=0.2)
   cat(i, '\n')
   mimic_trees_1[[i]] <- distillation_tree(teacher=teacher,
                                           generator=sampler_1,
@@ -47,7 +48,7 @@ for (i in 1:100) {
                                           max_stepsize=3000,
                                           min_stepsize=1000,
                                           init_sample_size=1000,
-                                          stop_tree_depth=4)
+                                          stop_tree_depth=5)
   mimic_trees_1_auc <- c(mimic_trees_1_auc, 
                          auc(response=teacher_yhat,
                              predictor=predict.distillation_tree(
@@ -68,10 +69,10 @@ for (i in 1:100) {
                                newdata=x_test,
                                type="prob_binary")))
 }
-save(mimic_trees_1, file="bs_1.RData")
-load("bs_1.RData")
-save(mimic_trees_2, file="bs_2.RData")
-load("bs_2.RData")
+save(mimic_trees_1, file="bs_cov_1.RData")
+load("bs_cov_1.RData")
+save(mimic_trees_2, file="bs_cov_2.RData")
+load("bs_cov_2.RData")
 
 #### PART 2 : Synthetic Data 2 ####
 
@@ -88,8 +89,6 @@ y.generator <- function(x) {
 
 
 x <- x.generator(1000)
-sampler_3 <- make_bootstrap_sampler(x)
-sampler_4 <- make_gaussian_sampler(x, sigma=0.1)
 x_test <- x.generator(10000)
 y <- as.factor(y.generator(x))
 
@@ -108,6 +107,9 @@ mimic_trees_4 = list()
 mimic_trees_3_auc <- c()
 mimic_trees_4_auc <- c()
 for (i in 1:100) {
+  x_boot <- x[sample(nrow(x), nrow(x), replace=TRUE), ]
+  sampler_3 <- make_bootstrap_sampler(x_boot)
+  sampler_4 <- make_gaussian_sampler(x_boot, sigma=0.2)
   cat(i, '\n')
   mimic_trees_3[[i]] <- distillation_tree(teacher=teacher,
                                           generator=sampler_3,
@@ -115,7 +117,7 @@ for (i in 1:100) {
                                           max_stepsize=3000,
                                           min_stepsize=1000,
                                           init_sample_size=1000,
-                                          stop_tree_depth=4)
+                                          stop_tree_depth=5)
   mimic_trees_3_auc <- c(mimic_trees_3_auc, 
                          auc(response=teacher_yhat,
                              predictor=predict.distillation_tree(
@@ -136,17 +138,17 @@ for (i in 1:100) {
                                newdata=x_test,
                                type="prob_binary")))
 }
-png("bootstrap_auc.png")
+png("cov_bootstrap_auc.png")
 boxplot(cbind(Bootstrap_1=mimic_trees_1_auc,
               Gaussian_1=mimic_trees_2_auc, 
               Bootstrap_2=mimic_trees_3_auc,
               Gaussian_2=mimic_trees_4_auc),
         main='AUC w.r.t. Teacher Predictions')
 dev.off()
-save(mimic_trees_3, file="bs_3.RData")
-load("bs_3.RData")
-save(mimic_trees_4, file="bs_4.RData")
-load("bs_4.RData")
+save(mimic_trees_3, file="bs_cov_3.RData")
+load("bs_cov_3.RData")
+save(mimic_trees_4, file="bs_cov_4.RData")
+load("bs_cov_4.RData")
 
 
 p1 <- summarize_trees(mimic_trees_1, 
@@ -162,6 +164,6 @@ p4 <- summarize_trees(mimic_trees_4,
                       name="Synthetic Data 2, Nps=10,000",
                       x_tick="Gaussian Density")
 sheet <- rbind(p1, p2, p3, p4)
-png("bootstrap.png")
+png("cov_bootstrap.png")
 plot_trees(sheet)
 dev.off()

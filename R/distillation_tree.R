@@ -506,3 +506,31 @@ plot_trees <- function(sheet) {
       xlab("") + ylab("Unique Structure Counts")) + 
       scale_x_discrete()
 }
+
+predict.distillation_tree <- function(tree, newdata, type="prob") {
+  yhat <- c()
+  if (is.vector(newdata)) {
+    newdata <- as.matrix(newdata, nrow=1)
+  } else if (ncol(newdata)==1) {
+    newdata <- t(as.matrix(newdata))
+  }
+  for(i in 1:nrow(newdata)) {
+    node <- tree
+    while(!node$leaf) {
+      if(newdata[i, node$split[1]] < node$split[2]) {
+        node <- node$lnode
+      } else {
+        node <- node$rnode
+      }
+    }
+    yhat <- rbind(yhat, node$value)
+  }
+  if (type == "factor") {
+    factor(apply(yhat, c(1), which.max) - 1)
+  } else if (type == "prob") {
+    yhat
+  } else if (type == "prob_binary") {
+    yhat[, -1]
+  }
+}
+
